@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -105,14 +106,46 @@ namespace LazyBones
 
                 foreach (var property in properties.Where(x => x.CanRead))
                 {
+                    var attr = FetchLazyDataAttr(property);
                     var propName = property.Name;
-                    object propValue = property.SafeGetValue(obj);
+                    bool ignore = false;
 
-                    builder = NestedObjectPocoToEmailBody(propName, propValue, builder, indents);
+                    if (attr != null)
+                    {
+                        if (!string.IsNullOrEmpty(attr.name))
+                        {
+                            propName = attr.name;
+                        }
+
+                        ignore = attr.ignore;
+                    }
+
+                    if (!ignore)
+                    {
+                        object propValue = property.SafeGetValue(obj);
+                        builder = NestedObjectPocoToEmailBody(propName, propValue, builder, indents);
+                    }
                 }
             }
 
             return builder;
+        }
+
+        protected LazyDataAttribute FetchLazyDataAttr(PropertyInfo property)
+        {
+            LazyDataAttribute dataAttr = null;
+
+            object[] attrs = property.GetCustomAttributes(true);
+            foreach (object attr in attrs)
+            {
+                LazyDataAttribute tempAttr = attr as LazyDataAttribute;
+                if (tempAttr != null)
+                {
+                    dataAttr = tempAttr;
+                }
+            }
+
+            return dataAttr;
         }
 
         protected string SimpleTypeToString(object obj)
